@@ -1,0 +1,1 @@
+async function s(t){return chrome.storage.local.get(t)}async function a(t){return chrome.storage.local.set(t)}async function o(t){return(await chrome.storage.session.get(t))[t]}async function r(t,e){return chrome.storage.session.set({[t]:e})}export{o as a,r as b,s as g,a as s};
