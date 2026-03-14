@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AnnotationCanvas } from "./AnnotationCanvas";
+import { AnnotationCanvas, type AnnotationCanvasHandle } from "./AnnotationCanvas";
 import { Toolbar } from "./Toolbar";
 import { BugForm } from "./BugForm";
 import { MetadataPanel } from "./MetadataPanel";
@@ -30,7 +30,7 @@ export function Editor() {
   const [copied, setCopied] = useState(false);
 
   // Canvas ref for export
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const canvasRef = React.useRef<AnnotationCanvasHandle>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -61,9 +61,9 @@ export function Editor() {
 
   const handleExportCanvas = (): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return reject(new Error("Canvas not available"));
-      resolve(canvas.toDataURL("image/png"));
+      const handle = canvasRef.current;
+      if (!handle) return reject(new Error("Canvas not available"));
+      resolve(handle.exportImage());
     });
   };
 

@@ -6,8 +6,17 @@ import React, {
   useCallback,
   useState,
 } from "react";
+import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
+import type Konva from "konva";
 import type { ToolType, DrawOperation } from "@/utils/canvas-tools";
-import { replayOperations, drawOperation } from "@/utils/canvas-tools";
+import { OperationShape } from "./shapes/OperationShape";
+import { KonvaArrow } from "./shapes/KonvaArrow";
+import { KonvaRect } from "./shapes/KonvaRect";
+import { KonvaCircle } from "./shapes/KonvaCircle";
+
+export interface AnnotationCanvasHandle {
+  exportImage: () => string;
+}
 
 interface AnnotationCanvasProps {
   screenshotUrl: string;
@@ -19,69 +28,82 @@ interface AnnotationCanvasProps {
 }
 
 export const AnnotationCanvas = forwardRef<
-  HTMLCanvasElement,
+  AnnotationCanvasHandle,
   AnnotationCanvasProps
 >(function AnnotationCanvas(
   { screenshotUrl, activeTool, color, strokeWidth, operations, onAddOperation },
   ref
 ) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const baseImageRef = useRef<HTMLImageElement | null>(null);
+  const stageRef = useRef<Konva.Stage>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
-  const currentPoints = useRef<{ x: number; y: number }[]>([]);
-
-  useImperativeHandle(ref, () => canvasRef.current!, []);
+  const [currentPoints, setCurrentPoints] = useState<
+    { x: number; y: number }[]
+  >([]);
 
   // Load base image
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      baseImageRef.current = img;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        replayOperations(ctx, img, operations);
-      }
-    };
+    const img = new window.Image();
+    img.onload = () => setBaseImage(img);
     img.src = screenshotUrl;
   }, [screenshotUrl]);
 
-  // Replay operations when they change
+  // Observe container size
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const img = baseImageRef.current;
-    if (!canvas || !img) return;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      replayOperations(ctx, img, operations);
-    }
-  }, [operations]);
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
-  const getCanvasPoint = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
-      };
+  // Compute scale
+  const imgW = baseImage?.naturalWidth ?? 1;
+  const imgH = baseImage?.naturalHeight ?? 1;
+  const scale = Math.min(
+    containerSize.width / imgW,
+    containerSize.height / imgH,
+    1
+  );
+
+  // Export at full resolution
+  useImperativeHandle(ref, () => ({
+    exportImage() {
+      const stage = stageRef.current;
+      if (!stage) throw new Error("Stage not available");
+      return stage.toDataURL({ pixelRatio: 1 / scale });
     },
-    []
+  }));
+
+  const getImagePoint = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const stage = stageRef.current;
+      if (!stage) return { x: 0, y: 0 };
+      const pos = stage.getPointerPosition();
+      if (!pos) return { x: 0, y: 0 };
+      return { x: pos.x / scale, y: pos.y / scale };
+    },
+    [scale]
   );
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (activeTool === "text") {
-        const point = getCanvasPoint(e);
+        const point = getImagePoint(e);
         const text = prompt("Enter text:");
         if (text) {
           onAddOperation({
+            id: crypto.randomUUID(),
             tool: "text",
             color,
             strokeWidth,
@@ -91,61 +113,101 @@ export const AnnotationCanvas = forwardRef<
         }
         return;
       }
-
       setIsDrawing(true);
-      currentPoints.current = [getCanvasPoint(e)];
+      setCurrentPoints([getImagePoint(e)]);
     },
-    [activeTool, color, strokeWidth, getCanvasPoint, onAddOperation]
+    [activeTool, color, strokeWidth, getImagePoint, onAddOperation]
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (!isDrawing) return;
-      const point = getCanvasPoint(e);
-      currentPoints.current.push(point);
-
-      // Live preview
-      const canvas = canvasRef.current;
-      const img = baseImageRef.current;
-      if (!canvas || !img) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      replayOperations(ctx, img, operations);
-      drawOperation(ctx, {
-        tool: activeTool,
-        color,
-        strokeWidth,
-        points: [...currentPoints.current],
-      });
+      const point = getImagePoint(e);
+      setCurrentPoints((prev) => [...prev, point]);
     },
-    [isDrawing, activeTool, color, strokeWidth, operations, getCanvasPoint]
+    [isDrawing, getImagePoint]
   );
 
   const handleMouseUp = useCallback(() => {
     if (!isDrawing) return;
     setIsDrawing(false);
 
-    if (currentPoints.current.length >= 2) {
+    if (currentPoints.length >= 2) {
       onAddOperation({
+        id: crypto.randomUUID(),
         tool: activeTool,
         color,
         strokeWidth,
-        points: [...currentPoints.current],
+        points: currentPoints,
       });
     }
-    currentPoints.current = [];
-  }, [isDrawing, activeTool, color, strokeWidth, onAddOperation]);
+    setCurrentPoints([]);
+  }, [isDrawing, activeTool, color, strokeWidth, currentPoints, onAddOperation]);
+
+  // Render preview shape for current drawing
+  const previewOp: DrawOperation | null =
+    isDrawing && currentPoints.length >= 2
+      ? {
+          id: "__preview__",
+          tool: activeTool,
+          color,
+          strokeWidth,
+          points: currentPoints,
+        }
+      : null;
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="max-w-full border border-gray-300 rounded-lg shadow-sm cursor-crosshair"
-      style={{ maxHeight: "calc(100vh - 80px)" }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    />
+    <div
+      ref={containerRef}
+      className="w-full border border-gray-300 rounded-lg shadow-sm cursor-crosshair overflow-hidden"
+      style={{ maxHeight: "calc(100vh - 80px)", aspectRatio: `${imgW}/${imgH}` }}
+    >
+      {baseImage && containerSize.width > 0 && (
+        <Stage
+          ref={stageRef}
+          width={imgW * scale}
+          height={imgH * scale}
+          scaleX={scale}
+          scaleY={scale}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <Layer>
+            <KonvaImage image={baseImage} width={imgW} height={imgH} />
+            {operations.map((op) => (
+              <OperationShape key={op.id} op={op} />
+            ))}
+            {previewOp && <PreviewShape op={previewOp} />}
+          </Layer>
+        </Stage>
+      )}
+    </div>
   );
 });
+
+function PreviewShape({ op }: { op: DrawOperation }) {
+  switch (op.tool) {
+    case "freehand": {
+      const flatPoints = op.points.flatMap((p) => [p.x, p.y]);
+      return (
+        <Line
+          points={flatPoints}
+          stroke={op.color}
+          strokeWidth={op.strokeWidth}
+          lineCap="round"
+          lineJoin="round"
+        />
+      );
+    }
+    case "arrow":
+      return <KonvaArrow op={op} />;
+    case "rect":
+      return <KonvaRect op={op} />;
+    case "circle":
+      return <KonvaCircle op={op} />;
+    default:
+      return null;
+  }
+}

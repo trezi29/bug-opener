@@ -1,0 +1,19 @@
+import { Rect } from "react-konva";
+import type { DrawOperation } from "@/utils/canvas-tools";
+
+export function KonvaRect({ op }: { op: DrawOperation }) {
+  if (op.points.length < 2) return null;
+  const start = op.points[0];
+  const end = op.points[op.points.length - 1];
+
+  return (
+    <Rect
+      x={Math.min(start.x, end.x)}
+      y={Math.min(start.y, end.y)}
+      width={Math.abs(end.x - start.x)}
+      height={Math.abs(end.y - start.y)}
+      stroke={op.color}
+      strokeWidth={op.strokeWidth}
+    />
+  );
+}
