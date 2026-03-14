@@ -5,24 +5,33 @@ import React, {
   forwardRef,
   useCallback,
   useState,
-} from "react";
-import { Stage, Layer, Image as KonvaImage, Line, Group, Transformer } from "react-konva";
-import type Konva from "konva";
-import type { ToolType, DrawOperation } from "@/utils/canvas-tools";
-import { OperationShape } from "./shapes/OperationShape";
-import { KonvaArrow } from "./shapes/KonvaArrow";
-import { KonvaRect } from "./shapes/KonvaRect";
-import { KonvaCircle } from "./shapes/KonvaCircle";
+} from 'react';
+import {
+  Stage,
+  Layer,
+  Image as KonvaImage,
+  Line,
+  Group,
+  Transformer,
+} from 'react-konva';
+import type Konva from 'konva';
+import type { ToolType, DrawOperation } from '@/utils/canvas-tools';
+import { OperationShape } from './shapes/OperationShape';
+import { KonvaArrow } from './shapes/KonvaArrow';
+import { KonvaRect } from './shapes/KonvaRect';
+import { KonvaCircle } from './shapes/KonvaCircle';
 
 function getGroupOrigin(op: DrawOperation): { x: number; y: number } {
   switch (op.tool) {
-    case "rect":
-    case "circle": {
-      const p0 = op.points[0], p1 = op.points[op.points.length - 1];
+    case 'rect':
+    case 'circle': {
+      const p0 = op.points[0],
+        p1 = op.points[op.points.length - 1];
       return { x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y) };
     }
-    case "freehand": {
-      const xs = op.points.map((p) => p.x), ys = op.points.map((p) => p.y);
+    case 'freehand': {
+      const xs = op.points.map((p) => p.x),
+        ys = op.points.map((p) => p.y);
       return { x: Math.min(...xs), y: Math.min(...ys) };
     }
     default: // arrow, text
@@ -35,21 +44,37 @@ function applyLocalTransform(
   newGx: number,
   newGy: number,
   sx: number,
-  sy: number
+  sy: number,
 ): DrawOperation {
   switch (op.tool) {
-    case "rect":
-    case "circle": {
-      const p0 = op.points[0], p1 = op.points[op.points.length - 1];
-      const w = Math.abs(p1.x - p0.x), h = Math.abs(p1.y - p0.y);
-      return { ...op, points: [{ x: newGx, y: newGy }, { x: newGx + w * sx, y: newGy + h * sy }] };
+    case 'rect':
+    case 'circle': {
+      const p0 = op.points[0],
+        p1 = op.points[op.points.length - 1];
+      const w = Math.abs(p1.x - p0.x),
+        h = Math.abs(p1.y - p0.y);
+      return {
+        ...op,
+        points: [
+          { x: newGx, y: newGy },
+          { x: newGx + w * sx, y: newGy + h * sy },
+        ],
+      };
     }
-    case "arrow": {
-      const p0 = op.points[0], p1 = op.points[op.points.length - 1];
-      const dx = p1.x - p0.x, dy = p1.y - p0.y;
-      return { ...op, points: [{ x: newGx, y: newGy }, { x: newGx + dx * sx, y: newGy + dy * sy }] };
+    case 'arrow': {
+      const p0 = op.points[0],
+        p1 = op.points[op.points.length - 1];
+      const dx = p1.x - p0.x,
+        dy = p1.y - p0.y;
+      return {
+        ...op,
+        points: [
+          { x: newGx, y: newGy },
+          { x: newGx + dx * sx, y: newGy + dy * sy },
+        ],
+      };
     }
-    case "freehand": {
+    case 'freehand': {
       const origGx = Math.min(...op.points.map((p) => p.x));
       const origGy = Math.min(...op.points.map((p) => p.y));
       return {
@@ -60,8 +85,12 @@ function applyLocalTransform(
         })),
       };
     }
-    case "text":
-      return { ...op, points: [{ x: newGx, y: newGy }], strokeWidth: op.strokeWidth * Math.max(sx, sy) };
+    case 'text':
+      return {
+        ...op,
+        points: [{ x: newGx, y: newGy }],
+        strokeWidth: op.strokeWidth * Math.max(sx, sy),
+      };
     default:
       return op;
   }
@@ -88,8 +117,19 @@ export const AnnotationCanvas = forwardRef<
   AnnotationCanvasHandle,
   AnnotationCanvasProps
 >(function AnnotationCanvas(
-  { screenshotUrl, activeTool, color, strokeWidth, operations, onAddOperation, onUpdateOperation, selectedId, onSetSelectedId, onDeleteOperation },
-  ref
+  {
+    screenshotUrl,
+    activeTool,
+    color,
+    strokeWidth,
+    operations,
+    onAddOperation,
+    onUpdateOperation,
+    selectedId,
+    onSetSelectedId,
+    onDeleteOperation,
+  },
+  ref,
 ) {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,19 +168,19 @@ export const AnnotationCanvas = forwardRef<
 
   // Deselect when switching away from move tool
   useEffect(() => {
-    if (activeTool !== "move") onSetSelectedId(null);
+    if (activeTool !== 'move') onSetSelectedId(null);
   }, [activeTool]);
 
   // Keyboard delete shortcut
   useEffect(() => {
     if (!selectedId) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Delete" || e.key === "Backspace") {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         onDeleteOperation(selectedId);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [selectedId, onDeleteOperation]);
 
   // Attach Transformer to the selected shape
@@ -165,14 +205,14 @@ export const AnnotationCanvas = forwardRef<
   const scale = Math.min(
     containerSize.width / imgW,
     containerSize.height / imgH,
-    1
+    1,
   );
 
   // Export at full resolution
   useImperativeHandle(ref, () => ({
     exportImage() {
       const stage = stageRef.current;
-      if (!stage) throw new Error("Stage not available");
+      if (!stage) throw new Error('Stage not available');
       const tr = transformerRef.current;
       if (tr) tr.visible(false);
       const url = stage.toDataURL({ pixelRatio: 1 / scale });
@@ -189,24 +229,24 @@ export const AnnotationCanvas = forwardRef<
       if (!pos) return { x: 0, y: 0 };
       return { x: pos.x / scale, y: pos.y / scale };
     },
-    [scale]
+    [scale],
   );
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (activeTool === "move") {
+      if (activeTool === 'move') {
         if (e.target === stageRef.current) {
           onSetSelectedId(null); // clicking background deselects
         }
         return;
       }
-      if (activeTool === "text") {
+      if (activeTool === 'text') {
         const point = getImagePoint(e);
-        const text = prompt("Enter text:");
+        const text = prompt('Enter text:');
         if (text) {
           onAddOperation({
             id: crypto.randomUUID(),
-            tool: "text",
+            tool: 'text',
             color,
             strokeWidth,
             points: [point],
@@ -218,7 +258,7 @@ export const AnnotationCanvas = forwardRef<
       setIsDrawing(true);
       setCurrentPoints([getImagePoint(e)]);
     },
-    [activeTool, color, strokeWidth, getImagePoint, onAddOperation]
+    [activeTool, color, strokeWidth, getImagePoint, onAddOperation],
   );
 
   const handleMouseMove = useCallback(
@@ -227,7 +267,7 @@ export const AnnotationCanvas = forwardRef<
       const point = getImagePoint(e);
       setCurrentPoints((prev) => [...prev, point]);
     },
-    [isDrawing, getImagePoint]
+    [isDrawing, getImagePoint],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -244,13 +284,20 @@ export const AnnotationCanvas = forwardRef<
       });
     }
     setCurrentPoints([]);
-  }, [isDrawing, activeTool, color, strokeWidth, currentPoints, onAddOperation]);
+  }, [
+    isDrawing,
+    activeTool,
+    color,
+    strokeWidth,
+    currentPoints,
+    onAddOperation,
+  ]);
 
   // Render preview shape for current drawing
   const previewOp: DrawOperation | null =
     isDrawing && currentPoints.length >= 2
       ? {
-          id: "__preview__",
+          id: '__preview__',
           tool: activeTool,
           color,
           strokeWidth,
@@ -261,8 +308,11 @@ export const AnnotationCanvas = forwardRef<
   return (
     <div
       ref={containerRef}
-      className={`w-full border border-gray-300 rounded-lg shadow-sm overflow-hidden ${activeTool === "move" ? "cursor-default" : "cursor-crosshair"}`}
-      style={{ maxHeight: "calc(100vh - 80px)", aspectRatio: `${imgW}/${imgH}` }}
+      className={`w-full border border-gray-300 rounded-lg shadow-sm overflow-hidden ${activeTool === 'move' ? 'cursor-default' : 'cursor-crosshair'}`}
+      style={{
+        maxHeight: 'calc(100vh - 80px)',
+        aspectRatio: `${imgW}/${imgH}`,
+      }}
     >
       {baseImage && containerSize.width > 0 && (
         <Stage
@@ -282,7 +332,7 @@ export const AnnotationCanvas = forwardRef<
               width={imgW}
               height={imgH}
               onMouseDown={() => {
-                if (activeTool === "move") onSetSelectedId(null);
+                if (activeTool === 'move') onSetSelectedId(null);
               }}
             />
             {operations.map((op) => {
@@ -296,9 +346,9 @@ export const AnnotationCanvas = forwardRef<
                     if (node) shapeRefs.current.set(op.id, node);
                     else shapeRefs.current.delete(op.id);
                   }}
-                  draggable={activeTool === "move"}
+                  draggable={activeTool === 'move'}
                   onMouseDown={(e) => {
-                    if (activeTool === "move") {
+                    if (activeTool === 'move') {
                       onSetSelectedId(op.id);
                       e.cancelBubble = true;
                     }
@@ -306,33 +356,43 @@ export const AnnotationCanvas = forwardRef<
                   onDragStart={() => onSetSelectedId(op.id)}
                   onDragEnd={(e) => {
                     const node = e.target as Konva.Group;
-                    const newGx = node.x(), newGy = node.y();
+                    const newGx = node.x(),
+                      newGy = node.y();
                     const { x: oldGx, y: oldGy } = getGroupOrigin(op);
-                    const dx = newGx - oldGx, dy = newGy - oldGy;
+                    const dx = newGx - oldGx,
+                      dy = newGy - oldGy;
                     onUpdateOperation(op.id, {
                       ...op,
-                      points: op.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+                      points: op.points.map((p) => ({
+                        x: p.x + dx,
+                        y: p.y + dy,
+                      })),
                     });
                   }}
                   onTransformEnd={(e) => {
                     const node = e.target as Konva.Group;
-                    const newGx = node.x(), newGy = node.y();
-                    const sx = node.scaleX(), sy = node.scaleY();
+                    const newGx = node.x(),
+                      newGy = node.y();
+                    const sx = node.scaleX(),
+                      sy = node.scaleY();
                     node.scaleX(1);
                     node.scaleY(1);
-                    onUpdateOperation(op.id, applyLocalTransform(op, newGx, newGy, sx, sy));
+                    onUpdateOperation(
+                      op.id,
+                      applyLocalTransform(op, newGx, newGy, sx, sy),
+                    );
                   }}
                   onMouseEnter={(e) => {
-                    if (activeTool === "move") {
+                    if (activeTool === 'move') {
                       const container = e.target.getStage()?.container();
-                      if (container) container.style.cursor = "move";
+                      if (container) container.style.cursor = 'move';
                     }
                   }}
                   onMouseLeave={(e) => {
                     const container = e.target.getStage()?.container();
                     if (container) {
                       container.style.cursor =
-                        activeTool === "move" ? "default" : "crosshair";
+                        activeTool === 'move' ? 'default' : 'crosshair';
                     }
                   }}
                 >
@@ -344,13 +404,26 @@ export const AnnotationCanvas = forwardRef<
             <Transformer
               ref={transformerRef}
               rotateEnabled={false}
-              anchorSize={8 / scale}
-              borderStrokeWidth={1.5 / scale}
+              anchorSize={2 / scale}
+              borderStrokeWidth={1 / scale}
               boundBoxFunc={(oldBox, newBox) =>
                 Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5
                   ? oldBox
                   : newBox
               }
+              anchorStyleFunc={(anchor) => {
+                const tr = transformerRef.current;
+                if (!tr) return;
+                if (anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
+                  anchor.opacity(0);
+                  anchor.height(tr.height());
+                  anchor.offsetY(tr.height() / 2);
+                } else if (anchor.hasName('top-center') || anchor.hasName('bottom-center')) {
+                  anchor.opacity(0);
+                  anchor.width(tr.width());
+                  anchor.offsetX(tr.width() / 2);
+                }
+              }}
             />
           </Layer>
         </Stage>
@@ -361,7 +434,7 @@ export const AnnotationCanvas = forwardRef<
 
 function PreviewShape({ op }: { op: DrawOperation }) {
   switch (op.tool) {
-    case "freehand": {
+    case 'freehand': {
       const flatPoints = op.points.flatMap((p) => [p.x, p.y]);
       return (
         <Line
@@ -373,11 +446,11 @@ function PreviewShape({ op }: { op: DrawOperation }) {
         />
       );
     }
-    case "arrow":
+    case 'arrow':
       return <KonvaArrow op={op} />;
-    case "rect":
+    case 'rect':
       return <KonvaRect op={op} />;
-    case "circle":
+    case 'circle':
       return <KonvaCircle op={op} />;
     default:
       return null;
