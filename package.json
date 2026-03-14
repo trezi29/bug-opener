@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "vite build",
+    "dev:agentation": "VITE_AGENTATION=true vite build --watch --mode development",
     "zip": "vite build && cd dist && zip -r ../bug-opener.zip ."
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "agentation": "^2.3.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.2.1",
