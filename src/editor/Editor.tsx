@@ -64,6 +64,33 @@ export function Editor() {
     setOperations((prev) => prev.map((o) => (o.id === id ? op : o)));
   };
 
+  // Sync color and stroke width to selected shape
+  useEffect(() => {
+    if (selectedId) {
+      const op = operations.find((o) => o.id === selectedId);
+      if (op) {
+        setColor(op.color);
+        setStrokeWidth(op.strokeWidth);
+      }
+    }
+  }, [selectedId]);
+
+  const handleColorChange = (newColor: string) => {
+    setColor(newColor);
+    if (selectedId) {
+      const op = operations.find((o) => o.id === selectedId);
+      if (op) handleUpdateOperation(selectedId, { ...op, color: newColor });
+    }
+  };
+
+  const handleStrokeWidthChange = (newWidth: number) => {
+    setStrokeWidth(newWidth);
+    if (selectedId) {
+      const op = operations.find((o) => o.id === selectedId);
+      if (op) handleUpdateOperation(selectedId, { ...op, strokeWidth: newWidth });
+    }
+  };
+
   const handleDeleteOperation = useCallback((id: string) => {
     setOperations((prev) => prev.filter((op) => op.id !== id));
     setSelectedId(null);
@@ -154,9 +181,9 @@ export function Editor() {
           activeTool={activeTool}
           onToolChange={setActiveTool}
           color={color}
-          onColorChange={setColor}
+          onColorChange={handleColorChange}
           strokeWidth={strokeWidth}
-          onStrokeWidthChange={setStrokeWidth}
+          onStrokeWidthChange={handleStrokeWidthChange}
           onUndo={handleUndo}
           canUndo={operations.length > 0}
           selectedId={selectedId}
