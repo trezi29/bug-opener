@@ -1,4 +1,4 @@
-export type ToolType = "arrow" | "rect" | "circle" | "freehand" | "text";
+export type ToolType = "arrow" | "rect" | "circle" | "freehand" | "text" | "move";
 
 export interface DrawOperation {
   id: string;

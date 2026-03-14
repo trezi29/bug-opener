@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { AnnotationCanvas, type AnnotationCanvasHandle } from "./AnnotationCanvas";
 import { Toolbar } from "./Toolbar";
 import { BugForm } from "./BugForm";
@@ -15,10 +15,11 @@ export function Editor() {
   const [error, setError] = useState<string | null>(null);
 
   // Canvas tool state
-  const [activeTool, setActiveTool] = useState<ToolType>("arrow");
+  const [activeTool, setActiveTool] = useState<ToolType>("move");
   const [color, setColor] = useState("#ff0000");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [operations, setOperations] = useState<DrawOperation[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Submission state
   const [submitResult, setSubmitResult] = useState<{
@@ -58,6 +59,15 @@ export function Editor() {
   const handleAddOperation = (op: DrawOperation) => {
     setOperations((prev) => [...prev, op]);
   };
+
+  const handleUpdateOperation = (id: string, op: DrawOperation) => {
+    setOperations((prev) => prev.map((o) => (o.id === id ? op : o)));
+  };
+
+  const handleDeleteOperation = useCallback((id: string) => {
+    setOperations((prev) => prev.filter((op) => op.id !== id));
+    setSelectedId(null);
+  }, []);
 
   const handleExportCanvas = (): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -149,6 +159,8 @@ export function Editor() {
           onStrokeWidthChange={setStrokeWidth}
           onUndo={handleUndo}
           canUndo={operations.length > 0}
+          selectedId={selectedId}
+          onDelete={() => selectedId && handleDeleteOperation(selectedId)}
         />
         <div className="flex-1 overflow-auto p-4">
           <AnnotationCanvas
@@ -159,6 +171,10 @@ export function Editor() {
             strokeWidth={strokeWidth}
             operations={operations}
             onAddOperation={handleAddOperation}
+            onUpdateOperation={handleUpdateOperation}
+            selectedId={selectedId}
+            onSetSelectedId={setSelectedId}
+            onDeleteOperation={handleDeleteOperation}
           />
         </div>
       </div>

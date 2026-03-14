@@ -13,6 +13,8 @@ import {
   Pencil,
   Type,
   Undo2,
+  Move,
+  Trash2,
 } from "lucide-react";
 import type { ToolType } from "@/utils/canvas-tools";
 import { cn } from "@/utils/cn";
@@ -26,9 +28,12 @@ interface ToolbarProps {
   onStrokeWidthChange: (width: number) => void;
   onUndo: () => void;
   canUndo: boolean;
+  selectedId: string | null;
+  onDelete: () => void;
 }
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
+  { type: "move", icon: Move, label: "Move" },
   { type: "arrow", icon: ArrowUpRight, label: "Arrow" },
   { type: "rect", icon: Square, label: "Rectangle" },
   { type: "circle", icon: Circle, label: "Circle" },
@@ -56,6 +61,8 @@ export function Toolbar({
   onStrokeWidthChange,
   onUndo,
   canUndo,
+  selectedId,
+  onDelete,
 }: ToolbarProps) {
   return (
     <TooltipProvider delayDuration={200}>
@@ -128,6 +135,23 @@ export function Toolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Undo</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-6 bg-gray-200" />
+
+        {/* Delete selected */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              disabled={!selectedId}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete selected</TooltipContent>
         </Tooltip>
       </div>
     </TooltipProvider>
