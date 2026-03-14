@@ -21,6 +21,7 @@ export function KonvaArrow({ op, local }: { op: DrawOperation; local?: boolean }
       fill={op.color}
       lineCap="round"
       lineJoin="round"
+      hitStrokeWidth={20}
     />
   );
 }

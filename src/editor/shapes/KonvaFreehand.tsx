@@ -20,6 +20,7 @@ export function KonvaFreehand({ op, local }: { op: DrawOperation; local?: boolea
       strokeWidth={op.strokeWidth}
       lineCap="round"
       lineJoin="round"
+      hitStrokeWidth={20}
     />
   );
 }
