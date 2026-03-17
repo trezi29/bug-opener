@@ -58,6 +58,8 @@ export function Editor() {
 
   const handleAddOperation = (op: DrawOperation) => {
     setOperations((prev) => [...prev, op]);
+    setActiveTool('move');
+    setSelectedId(op.id);
   };
 
   const handleUpdateOperation = (id: string, op: DrawOperation) => {
