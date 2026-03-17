@@ -1,11 +1,12 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
+import { Slider } from '@/components/ui/slider';
 import {
   ArrowUpRight,
   Square,
@@ -15,9 +16,9 @@ import {
   Undo2,
   Move,
   Trash2,
-} from "lucide-react";
-import type { ToolType } from "@/utils/canvas-tools";
-import { cn } from "@/utils/cn";
+} from 'lucide-react';
+import type { ToolType } from '@/utils/canvas-tools';
+import { cn } from '@/utils/cn';
 
 interface ToolbarProps {
   activeTool: ToolType;
@@ -33,23 +34,23 @@ interface ToolbarProps {
 }
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
-  { type: "move", icon: Move, label: "Move" },
-  { type: "arrow", icon: ArrowUpRight, label: "Arrow" },
-  { type: "rect", icon: Square, label: "Rectangle" },
-  { type: "circle", icon: Circle, label: "Circle" },
-  { type: "freehand", icon: Pencil, label: "Freehand" },
-  { type: "text", icon: Type, label: "Text" },
+  { type: 'move', icon: Move, label: 'Move' },
+  { type: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
+  { type: 'rect', icon: Square, label: 'Rectangle' },
+  { type: 'circle', icon: Circle, label: 'Circle' },
+  { type: 'freehand', icon: Pencil, label: 'Freehand' },
+  { type: 'text', icon: Type, label: 'Text' },
 ];
 
 const colors = [
-  "#ff0000",
-  "#ff6600",
-  "#ffcc00",
-  "#00cc00",
-  "#0066ff",
-  "#9933ff",
-  "#000000",
-  "#ffffff",
+  '#ff0000',
+  '#ff6600',
+  '#ffcc00',
+  '#00cc00',
+  '#0066ff',
+  '#9933ff',
+  '#000000',
+  '#ffffff',
 ];
 
 export function Toolbar({
@@ -73,7 +74,7 @@ export function Toolbar({
             <Tooltip key={type}>
               <TooltipTrigger asChild>
                 <Button
-                  variant={activeTool === type ? "default" : "ghost"}
+                  variant={activeTool === type ? 'default' : 'ghost'}
                   size="icon"
                   onClick={() => onToolChange(type)}
                 >
@@ -93,10 +94,10 @@ export function Toolbar({
             <button
               key={c}
               className={cn(
-                "w-6 h-6 rounded-full border-2 transition-transform",
+                'w-6 h-6 rounded-full border-2 transition-transform',
                 color === c
-                  ? "border-gray-900 scale-110"
-                  : "border-gray-300 hover:scale-105"
+                  ? 'border-gray-900 scale-110'
+                  : 'border-gray-300 hover:scale-105',
               )}
               style={{ backgroundColor: c }}
               onClick={() => onColorChange(c)}
@@ -109,14 +110,23 @@ export function Toolbar({
         {/* Stroke width */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">Width</span>
-          <input
+          <Slider
+            value={[strokeWidth]}
+            onValueChange={(value) => onStrokeWidthChange(value[0])}
+            min={1}
+            max={10}
+            step={1}
+            className="w-20"
+          />
+          {/* <input
             type="range"
             min={1}
             max={10}
             value={strokeWidth}
             onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
+            onPointerDown={(e) => e.stopPropagation()}
             className="w-20"
-          />
+          />*/}
           <span className="text-xs text-gray-600 w-4">{strokeWidth}</span>
         </div>
 

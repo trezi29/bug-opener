@@ -404,8 +404,10 @@ export const AnnotationCanvas = forwardRef<
             <Transformer
               ref={transformerRef}
               rotateEnabled={false}
-              anchorSize={2 / scale}
-              borderStrokeWidth={1 / scale}
+              // anchorSize={2 / scale}
+              anchorSize={8}
+              // borderStrokeWidth={1 / scale}
+              borderStrokeWidth={2}
               boundBoxFunc={(oldBox, newBox) =>
                 Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5
                   ? oldBox
@@ -414,11 +416,17 @@ export const AnnotationCanvas = forwardRef<
               anchorStyleFunc={(anchor) => {
                 const tr = transformerRef.current;
                 if (!tr) return;
-                if (anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
+                if (
+                  anchor.hasName('middle-left') ||
+                  anchor.hasName('middle-right')
+                ) {
                   anchor.opacity(0);
                   anchor.height(tr.height());
                   anchor.offsetY(tr.height() / 2);
-                } else if (anchor.hasName('top-center') || anchor.hasName('bottom-center')) {
+                } else if (
+                  anchor.hasName('top-center') ||
+                  anchor.hasName('bottom-center')
+                ) {
                   anchor.opacity(0);
                   anchor.width(tr.width());
                   anchor.offsetX(tr.width() / 2);

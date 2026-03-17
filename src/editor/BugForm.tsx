@@ -40,7 +40,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
   const [linearTeams, setLinearTeams] = useState<{ id: string; name: string }[]>([]);
   const [linearTeamId, setLinearTeamId] = useState("");
   const [linearProjects, setLinearProjects] = useState<{ id: string; name: string }[]>([]);
-  const [linearProjectId, setLinearProjectId] = useState("");
+  const [linearProjectId, setLinearProjectId] = useState("none");
 
   // ClickUp state
   const [clickupKey, setClickupKey] = useState<string>("");
@@ -159,7 +159,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
       if (integration === "linear") {
         if (!linearTeamId) throw new Error("Select a Linear team");
         payload.teamId = linearTeamId;
-        if (linearProjectId) payload.projectId = linearProjectId;
+        if (linearProjectId && linearProjectId !== "none") payload.projectId = linearProjectId;
         if (selectedAccountId) payload.linearAccountId = selectedAccountId;
       } else {
         if (!clickupListId) throw new Error("Select a ClickUp list");
@@ -294,7 +294,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
                   <SelectValue placeholder="No project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {linearProjects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
