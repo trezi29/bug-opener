@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getStorage, type PageMetadata } from "@/utils/storage";
+import { getStorage, type PageMetadata, type LinearAccount } from "@/utils/storage";
 import { fetchLinearTeams, fetchLinearProjects } from "@/api/linear";
 import {
   fetchClickUpWorkspaces,
@@ -35,7 +35,8 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Linear state
-  const [linearKey, setLinearKey] = useState<string>("");
+  const [linearAccounts, setLinearAccounts] = useState<LinearAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [linearTeams, setLinearTeams] = useState<{ id: string; name: string }[]>([]);
   const [linearTeamId, setLinearTeamId] = useState("");
   const [linearProjects, setLinearProjects] = useState<{ id: string; name: string }[]>([]);
@@ -53,6 +54,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
   // Load saved keys + defaults
   useEffect(() => {
     getStorage([
+      "linear_accounts",
       "linear_api_key",
       "linear_default_team_id",
       "linear_default_project_id",
@@ -63,11 +65,29 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
       "default_integration",
     ]).then((data) => {
       if (data.default_integration) setIntegration(data.default_integration);
-      if (data.linear_api_key) {
-        setLinearKey(data.linear_api_key);
+
+      const accounts = data.linear_accounts ?? [];
+      if (accounts.length > 0) {
+        setLinearAccounts(accounts);
+        const first = accounts[0];
+        setSelectedAccountId(first.id);
+        if (first.defaultTeamId) setLinearTeamId(first.defaultTeamId);
+        if (first.defaultProjectId) setLinearProjectId(first.defaultProjectId);
+      } else if (data.linear_api_key) {
+        // Legacy fallback: wrap old key in a synthetic account
+        const legacy: LinearAccount = {
+          id: "__legacy__",
+          apiKey: data.linear_api_key,
+          viewer: { id: "", name: "Account", email: "" },
+          defaultTeamId: data.linear_default_team_id,
+          defaultProjectId: data.linear_default_project_id,
+        };
+        setLinearAccounts([legacy]);
+        setSelectedAccountId("__legacy__");
         if (data.linear_default_team_id) setLinearTeamId(data.linear_default_team_id);
         if (data.linear_default_project_id) setLinearProjectId(data.linear_default_project_id);
       }
+
       if (data.clickup_api_key) {
         setClickupKey(data.clickup_api_key);
         if (data.clickup_default_workspace_id) setClickupWorkspaceId(data.clickup_default_workspace_id);
@@ -77,9 +97,13 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
     });
   }, []);
 
-  // Fetch Linear teams when key is available
+  const selectedAccount = linearAccounts.find((a) => a.id === selectedAccountId);
+  const linearKey = selectedAccount?.apiKey ?? "";
+
+  // Fetch Linear teams when selected account changes
   useEffect(() => {
     if (!linearKey) return;
+    setLinearTeams([]);
     fetchLinearTeams(linearKey)
       .then(setLinearTeams)
       .catch(() => setLinearTeams([]));
@@ -136,6 +160,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
         if (!linearTeamId) throw new Error("Select a Linear team");
         payload.teamId = linearTeamId;
         if (linearProjectId) payload.projectId = linearProjectId;
+        if (selectedAccountId) payload.linearAccountId = selectedAccountId;
       } else {
         if (!clickupListId) throw new Error("Select a ClickUp list");
         payload.listId = clickupListId;
@@ -157,6 +182,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
   };
 
   const hasKey = integration === "linear" ? !!linearKey : !!clickupKey;
+  const showAccountSelector = integration === "linear" && linearAccounts.length > 1;
 
   return (
     <div className="p-4 space-y-4">
@@ -212,6 +238,33 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
             to add one.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Linear account selector (only shown when multiple accounts) */}
+      {showAccountSelector && (
+        <div className="space-y-2">
+          <Label>Account</Label>
+          <Select
+            value={selectedAccountId}
+            onValueChange={(id) => {
+              setSelectedAccountId(id);
+              const acct = linearAccounts.find((a) => a.id === id);
+              setLinearTeamId(acct?.defaultTeamId ?? "");
+              setLinearProjectId(acct?.defaultProjectId ?? "");
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {linearAccounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.viewer.name || a.viewer.email || "Account"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {/* Linear selectors */}

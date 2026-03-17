@@ -49,6 +49,7 @@ interface SubmitPayload {
   // Linear-specific
   teamId?: string;
   projectId?: string;
+  linearAccountId?: string;
   // ClickUp-specific
   listId?: string;
 }
@@ -60,16 +61,18 @@ async function handleSubmitBug(payload: SubmitPayload) {
   const metadataTable = buildMetadataMarkdown(metadata);
 
   if (integration === "linear") {
-    const { linear_api_key } = await getStorage(["linear_api_key"]);
-    if (!linear_api_key) throw new Error("Linear API key not configured");
+    const { linear_accounts, linear_api_key: legacyKey } = await getStorage(["linear_accounts", "linear_api_key"]);
+    const account = linear_accounts?.find(a => a.id === payload.linearAccountId);
+    const apiKey = account?.apiKey ?? legacyKey;
+    if (!apiKey) throw new Error("Linear API key not configured");
 
     // Upload image first
     const blob = await dataUrlToBlob(annotatedImageDataUrl);
-    const assetUrl = await uploadLinearImage(linear_api_key, blob);
+    const assetUrl = await uploadLinearImage(apiKey, blob);
 
     const fullDescription = `${description}\n\n## Screenshot\n![Bug Screenshot](${assetUrl})\n\n## Environment\n${metadataTable}`;
 
-    const issue = await createLinearIssue(linear_api_key, {
+    const issue = await createLinearIssue(apiKey, {
       title,
       description: fullDescription,
       teamId: payload.teamId!,
@@ -129,9 +132,32 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return response.blob();
 }
 
+const METADATA_KEY_ORDER: string[] = [
+  "url",
+  "pageTitle",
+  "timestamp",
+  "userAgent",
+  "language",
+  "connectionType",
+  "viewportWidth",
+  "viewportHeight",
+  "screenWidth",
+  "screenHeight",
+  "devicePixelRatio",
+  "scrollX",
+  "scrollY",
+  "cookieCount",
+  "localStorageKeys",
+];
+
 function buildMetadataMarkdown(metadata: Record<string, unknown>): string {
-  const rows = Object.entries(metadata)
-    .map(([key, value]) => {
+  const orderedKeys = [
+    ...METADATA_KEY_ORDER.filter((k) => k in metadata),
+    ...Object.keys(metadata).filter((k) => !METADATA_KEY_ORDER.includes(k)),
+  ];
+  const rows = orderedKeys
+    .map((key) => {
+      const value = metadata[key];
       const display =
         Array.isArray(value) ? value.join(", ") : String(value ?? "N/A");
       return `| ${key} | ${display} |`;

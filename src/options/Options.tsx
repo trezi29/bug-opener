@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { getStorage, setStorage } from "@/utils/storage";
+import { getStorage, setStorage, type LinearAccount } from "@/utils/storage";
 import { validateLinearKey, fetchLinearTeams, fetchLinearProjects } from "@/api/linear";
 import {
   validateClickUpKey,
@@ -29,19 +29,91 @@ import {
   fetchClickUpLists,
 } from "@/api/clickup";
 
+// ---- AccountCard ----
+
+interface AccountCardProps {
+  account: LinearAccount;
+  onRemove: () => void;
+  onUpdate: (updated: LinearAccount) => void;
+}
+
+function AccountCard({ account, onRemove, onUpdate }: AccountCardProps) {
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetchLinearTeams(account.apiKey).then(setTeams).catch(() => {});
+  }, [account.apiKey]);
+
+  useEffect(() => {
+    if (!account.defaultTeamId) { setProjects([]); return; }
+    fetchLinearProjects(account.apiKey, account.defaultTeamId).then(setProjects).catch(() => {});
+  }, [account.apiKey, account.defaultTeamId]);
+
+  return (
+    <div className="p-3 border rounded-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="success">{account.viewer.name}</Badge>
+          <span className="text-xs text-gray-500">{account.viewer.email}</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onRemove} className="text-red-500 hover:text-red-600">
+          Remove
+        </Button>
+      </div>
+
+      {teams.length > 0 && (
+        <div className="space-y-2">
+          <Label>Default Team</Label>
+          <Select
+            value={account.defaultTeamId ?? "none"}
+            onValueChange={(v) => onUpdate({ ...account, defaultTeamId: v === "none" ? undefined : v, defaultProjectId: undefined })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select team" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {account.defaultTeamId && projects.length > 0 && (
+        <div className="space-y-2">
+          <Label>Default Project</Label>
+          <Select
+            value={account.defaultProjectId ?? "none"}
+            onValueChange={(v) => onUpdate({ ...account, defaultProjectId: v === "none" ? undefined : v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Options ----
+
 export function Options() {
-  // Linear
-  const [linearKey, setLinearKey] = useState("");
-  const [linearViewer, setLinearViewer] = useState<{
-    name: string;
-    email: string;
-  } | null>(null);
-  const [linearError, setLinearError] = useState<string | null>(null);
-  const [linearValidating, setLinearValidating] = useState(false);
-  const [linearTeams, setLinearTeams] = useState<{ id: string; name: string }[]>([]);
-  const [linearTeamId, setLinearTeamId] = useState("");
-  const [linearProjects, setLinearProjects] = useState<{ id: string; name: string }[]>([]);
-  const [linearProjectId, setLinearProjectId] = useState("");
+  // Linear multi-account
+  const [accounts, setAccounts] = useState<LinearAccount[]>([]);
+  const [newLinearKey, setNewLinearKey] = useState("");
+  const [newLinearValidating, setNewLinearValidating] = useState(false);
+  const [newLinearError, setNewLinearError] = useState<string | null>(null);
+  const [showAddLinear, setShowAddLinear] = useState(false);
 
   // ClickUp
   const [clickupKey, setClickupKey] = useState("");
@@ -63,9 +135,10 @@ export function Options() {
   const [includeLocalStorage, setIncludeLocalStorage] = useState(true);
   const [saved, setSaved] = useState(false);
 
-  // Load existing settings
+  // Load + migrate on mount
   useEffect(() => {
     getStorage([
+      "linear_accounts",
       "linear_api_key",
       "linear_viewer",
       "linear_default_team_id",
@@ -77,11 +150,23 @@ export function Options() {
       "clickup_default_list_id",
       "default_integration",
       "include_localstorage_keys",
-    ]).then((data) => {
-      if (data.linear_api_key) setLinearKey(data.linear_api_key);
-      if (data.linear_viewer) setLinearViewer(data.linear_viewer);
-      if (data.linear_default_team_id) setLinearTeamId(data.linear_default_team_id);
-      if (data.linear_default_project_id) setLinearProjectId(data.linear_default_project_id);
+    ]).then(async (data) => {
+      // Linear: load or migrate
+      if (data.linear_accounts && data.linear_accounts.length > 0) {
+        setAccounts(data.linear_accounts);
+      } else if (data.linear_api_key && data.linear_viewer) {
+        const migrated: LinearAccount = {
+          id: crypto.randomUUID(),
+          apiKey: data.linear_api_key,
+          viewer: data.linear_viewer,
+          defaultTeamId: data.linear_default_team_id,
+          defaultProjectId: data.linear_default_project_id,
+        };
+        const newAccounts = [migrated];
+        await setStorage({ linear_accounts: newAccounts });
+        setAccounts(newAccounts);
+      }
+
       if (data.clickup_api_key) setClickupKey(data.clickup_api_key);
       if (data.clickup_user) setClickupUser(data.clickup_user);
       if (data.clickup_default_workspace_id) setClickupWorkspaceId(data.clickup_default_workspace_id);
@@ -93,18 +178,7 @@ export function Options() {
     });
   }, []);
 
-  // Fetch Linear data when key is validated
-  useEffect(() => {
-    if (!linearViewer || !linearKey) return;
-    fetchLinearTeams(linearKey).then(setLinearTeams).catch(() => {});
-  }, [linearViewer, linearKey]);
-
-  useEffect(() => {
-    if (!linearKey || !linearTeamId) return;
-    fetchLinearProjects(linearKey, linearTeamId).then(setLinearProjects).catch(() => {});
-  }, [linearKey, linearTeamId]);
-
-  // Fetch ClickUp data
+  // ClickUp cascading fetches
   useEffect(() => {
     if (!clickupUser || !clickupKey) return;
     fetchClickUpWorkspaces(clickupKey).then(setClickupWorkspaces).catch(() => {});
@@ -120,19 +194,37 @@ export function Options() {
     fetchClickUpLists(clickupKey, clickupSpaceId).then(setClickupLists).catch(() => {});
   }, [clickupKey, clickupSpaceId]);
 
-  const validateLinear = async () => {
-    setLinearValidating(true);
-    setLinearError(null);
+  const saveAccounts = async (updated: LinearAccount[]) => {
+    setAccounts(updated);
+    await setStorage({ linear_accounts: updated });
+  };
+
+  const handleAddLinearAccount = async () => {
+    setNewLinearValidating(true);
+    setNewLinearError(null);
     try {
-      const viewer = await validateLinearKey(linearKey);
-      setLinearViewer(viewer);
-      await setStorage({ linear_api_key: linearKey, linear_viewer: viewer });
+      const viewer = await validateLinearKey(newLinearKey);
+      const account: LinearAccount = {
+        id: crypto.randomUUID(),
+        apiKey: newLinearKey,
+        viewer,
+      };
+      await saveAccounts([...accounts, account]);
+      setNewLinearKey("");
+      setShowAddLinear(false);
     } catch (err) {
-      setLinearError(err instanceof Error ? err.message : "Validation failed");
-      setLinearViewer(null);
+      setNewLinearError(err instanceof Error ? err.message : "Validation failed");
     } finally {
-      setLinearValidating(false);
+      setNewLinearValidating(false);
     }
+  };
+
+  const handleRemoveAccount = async (id: string) => {
+    await saveAccounts(accounts.filter((a) => a.id !== id));
+  };
+
+  const handleUpdateAccount = async (updated: LinearAccount) => {
+    await saveAccounts(accounts.map((a) => (a.id === updated.id ? updated : a)));
   };
 
   const validateClickUp = async () => {
@@ -154,8 +246,6 @@ export function Options() {
     await setStorage({
       default_integration: defaultIntegration,
       include_localstorage_keys: includeLocalStorage,
-      linear_default_team_id: linearTeamId || undefined,
-      linear_default_project_id: linearProjectId || undefined,
       clickup_default_workspace_id: clickupWorkspaceId || undefined,
       clickup_default_space_id: clickupSpaceId || undefined,
       clickup_default_list_id: clickupListId || undefined,
@@ -176,73 +266,51 @@ export function Options() {
       {/* Linear */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Linear</CardTitle>
-            {linearViewer && (
-              <Badge variant="success">{linearViewer.name}</Badge>
-            )}
-          </div>
+          <CardTitle>Linear</CardTitle>
           <CardDescription>
-            Connect your Linear account with a personal API token.
+            Connect one or more Linear accounts with personal API tokens.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              type="password"
-              placeholder="lin_api_..."
-              value={linearKey}
-              onChange={(e) => setLinearKey(e.target.value)}
-              className="flex-1"
+        <CardContent className="space-y-3">
+          {accounts.map((account) => (
+            <AccountCard
+              key={account.id}
+              account={account}
+              onRemove={() => handleRemoveAccount(account.id)}
+              onUpdate={handleUpdateAccount}
             />
-            <Button
-              onClick={validateLinear}
-              disabled={!linearKey || linearValidating}
-            >
-              {linearValidating ? "Validating..." : "Validate"}
-            </Button>
-          </div>
-          {linearError && (
-            <Alert variant="destructive">
-              <AlertDescription>{linearError}</AlertDescription>
-            </Alert>
-          )}
-          {linearViewer && linearTeams.length > 0 && (
-            <>
-              <div className="space-y-2">
-                <Label>Default Team</Label>
-                <Select value={linearTeamId} onValueChange={setLinearTeamId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select team" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {linearTeams.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          ))}
+
+          {showAddLinear ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="lin_api_..."
+                  value={newLinearKey}
+                  onChange={(e) => setNewLinearKey(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleAddLinearAccount}
+                  disabled={!newLinearKey || newLinearValidating}
+                >
+                  {newLinearValidating ? "Validating..." : "Validate"}
+                </Button>
+                <Button variant="ghost" onClick={() => { setShowAddLinear(false); setNewLinearKey(""); setNewLinearError(null); }}>
+                  Cancel
+                </Button>
               </div>
-              {linearProjects.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Default Project</Label>
-                  <Select value={linearProjectId} onValueChange={setLinearProjectId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {linearProjects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {newLinearError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{newLinearError}</AlertDescription>
+                </Alert>
               )}
-            </>
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setShowAddLinear(true)}>
+              + Add Account
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -337,7 +405,6 @@ export function Options() {
               )}
             </>
           )}
-
         </CardContent>
       </Card>
 

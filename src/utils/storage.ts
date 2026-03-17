@@ -1,5 +1,15 @@
+export interface LinearAccount {
+  id: string;
+  apiKey: string;
+  viewer: { id: string; name: string; email: string };
+  defaultTeamId?: string;
+  defaultProjectId?: string;
+}
+
 export interface StorageData {
-  // Linear
+  // Linear (multi-account)
+  linear_accounts?: LinearAccount[];
+  // Legacy single-key fields (kept for migration detection)
   linear_api_key?: string;
   linear_default_team_id?: string;
   linear_default_project_id?: string;
