@@ -18,6 +18,7 @@ export function KonvaCircle({ op, local }: { op: DrawOperation; local?: boolean 
         radiusY={ry}
         stroke={op.color}
         strokeWidth={op.strokeWidth}
+        strokeScaleEnabled={false}
       />
     );
   }
@@ -30,6 +31,7 @@ export function KonvaCircle({ op, local }: { op: DrawOperation; local?: boolean 
       radiusY={ry}
       stroke={op.color}
       strokeWidth={op.strokeWidth}
+      strokeScaleEnabled={false}
     />
   );
 }

@@ -369,6 +369,33 @@ export const AnnotationCanvas = forwardRef<
                       })),
                     });
                   }}
+                  onTransform={(e) => {
+                    if (op.tool !== 'rect' && op.tool !== 'circle') return;
+                    const node = e.target as Konva.Group;
+                    const sx = node.scaleX(),
+                      sy = node.scaleY();
+                    if (op.tool === 'rect') {
+                      const rectNode = node.findOne(
+                        'Rect',
+                      ) as Konva.Rect | null;
+                      if (!rectNode) return;
+                      rectNode.width(rectNode.width() * sx);
+                      rectNode.height(rectNode.height() * sy);
+                    } else {
+                      const ellipseNode = node.findOne(
+                        'Ellipse',
+                      ) as Konva.Ellipse | null;
+                      if (!ellipseNode) return;
+                      const newRx = ellipseNode.radiusX() * sx;
+                      const newRy = ellipseNode.radiusY() * sy;
+                      ellipseNode.radiusX(newRx);
+                      ellipseNode.radiusY(newRy);
+                      ellipseNode.x(newRx);
+                      ellipseNode.y(newRy);
+                    }
+                    node.scaleX(1);
+                    node.scaleY(1);
+                  }}
                   onTransformEnd={(e) => {
                     const node = e.target as Konva.Group;
                     const newGx = node.x(),
@@ -377,6 +404,42 @@ export const AnnotationCanvas = forwardRef<
                       sy = node.scaleY();
                     node.scaleX(1);
                     node.scaleY(1);
+                    if (op.tool === 'rect') {
+                      const rectNode = node.findOne(
+                        'Rect',
+                      ) as Konva.Rect | null;
+                      if (rectNode) {
+                        const finalW = rectNode.width() * sx;
+                        const finalH = rectNode.height() * sy;
+                        onUpdateOperation(op.id, {
+                          ...op,
+                          points: [
+                            { x: newGx, y: newGy },
+                            { x: newGx + finalW, y: newGy + finalH },
+                          ],
+                        });
+                        return;
+                      }
+                    } else if (op.tool === 'circle') {
+                      const ellipseNode = node.findOne(
+                        'Ellipse',
+                      ) as Konva.Ellipse | null;
+                      if (ellipseNode) {
+                        const finalRx = ellipseNode.radiusX() * sx;
+                        const finalRy = ellipseNode.radiusY() * sy;
+                        onUpdateOperation(op.id, {
+                          ...op,
+                          points: [
+                            { x: newGx, y: newGy },
+                            {
+                              x: newGx + finalRx * 2,
+                              y: newGy + finalRy * 2,
+                            },
+                          ],
+                        });
+                        return;
+                      }
+                    }
                     onUpdateOperation(
                       op.id,
                       applyLocalTransform(op, newGx, newGy, sx, sy),

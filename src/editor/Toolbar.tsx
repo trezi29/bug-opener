@@ -35,8 +35,8 @@ interface ToolbarProps {
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
   { type: 'move', icon: MousePointer, label: 'Move' },
-  { type: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
   { type: 'rect', icon: Square, label: 'Rectangle' },
+  { type: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
   { type: 'circle', icon: Circle, label: 'Circle' },
   { type: 'freehand', icon: Pencil, label: 'Freehand' },
   { type: 'text', icon: Type, label: 'Text' },
