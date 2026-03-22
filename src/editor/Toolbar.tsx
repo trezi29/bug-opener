@@ -14,7 +14,7 @@ import {
   Pencil,
   Type,
   Undo2,
-  Move,
+  MousePointer,
   Trash2,
 } from 'lucide-react';
 import type { ToolType } from '@/utils/canvas-tools';
@@ -34,7 +34,7 @@ interface ToolbarProps {
 }
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
-  { type: 'move', icon: Move, label: 'Move' },
+  { type: 'move', icon: MousePointer, label: 'Move' },
   { type: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
   { type: 'rect', icon: Square, label: 'Rectangle' },
   { type: 'circle', icon: Circle, label: 'Circle' },

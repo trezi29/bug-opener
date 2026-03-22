@@ -15,6 +15,7 @@ export function KonvaRect({ op, local }: { op: DrawOperation; local?: boolean })
         height={Math.abs(end.y - start.y)}
         stroke={op.color}
         strokeWidth={op.strokeWidth}
+        strokeScaleEnabled={false}
       />
     );
   }
@@ -27,6 +28,7 @@ export function KonvaRect({ op, local }: { op: DrawOperation; local?: boolean })
       height={Math.abs(end.y - start.y)}
       stroke={op.color}
       strokeWidth={op.strokeWidth}
+      strokeScaleEnabled={false}
     />
   );
 }
