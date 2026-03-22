@@ -16,6 +16,7 @@ export function KonvaArrow({ op, local }: { op: DrawOperation; local?: boolean }
       points={pts}
       stroke={op.color}
       strokeWidth={op.strokeWidth}
+      strokeScaleEnabled={false}
       pointerLength={pointerSize}
       pointerWidth={pointerSize}
       fill={op.color}

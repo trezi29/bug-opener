@@ -18,6 +18,7 @@ export function KonvaFreehand({ op, local }: { op: DrawOperation; local?: boolea
       points={flatPoints}
       stroke={op.color}
       strokeWidth={op.strokeWidth}
+      strokeScaleEnabled={false}
       lineCap="round"
       lineJoin="round"
       hitStrokeWidth={20}
