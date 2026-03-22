@@ -11,6 +11,7 @@ import {
   Layer,
   Image as KonvaImage,
   Line,
+  Rect,
   Group,
   Transformer,
 } from 'react-konva';
@@ -94,6 +95,27 @@ function applyLocalTransform(
     default:
       return op;
   }
+}
+
+// Returns the bounding box of an operation in group-local coordinates (origin at
+// getGroupOrigin). Used to size the transparent hit rect for drag detection.
+// Returns null for text (Konva Text is natively fully hittable) and degenerate
+// zero-size cases (e.g. a single-point shape).
+function getGroupBBox(
+  op: DrawOperation,
+): { x: number; y: number; width: number; height: number } | null {
+  if (op.tool === 'text' || op.points.length === 0) return null;
+  const origin = getGroupOrigin(op);
+  const xs = op.points.map((p) => p.x - origin.x);
+  const ys = op.points.map((p) => p.y - origin.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const width = maxX - minX;
+  const height = maxY - minY;
+  if (width === 0 || height === 0) return null;
+  return { x: minX, y: minY, width, height };
 }
 
 export interface AnnotationCanvasHandle {
@@ -460,6 +482,26 @@ export const AnnotationCanvas = forwardRef<
                   }}
                 >
                   <OperationShape op={op} local />
+                  {/* Transparent hit rect — only for the selected shape in move
+                      mode. Covers the full bounding box so the user can drag
+                      from anywhere inside the transformer selection area, not
+                      just from the shape's stroke. Rendered after OperationShape
+                      so it sits on top (last child = highest z-order in Konva),
+                      but findOne('Rect') in onTransform still finds the shape's
+                      own Rect first because it is the earlier child. */}
+                  {activeTool === 'move' && selectedId === op.id &&
+                    (() => {
+                      const bbox = getGroupBBox(op);
+                      return bbox ? (
+                        <Rect
+                          x={bbox.x}
+                          y={bbox.y}
+                          width={bbox.width}
+                          height={bbox.height}
+                          fill="transparent"
+                        />
+                      ) : null;
+                    })()}
                 </Group>
               );
             })}
