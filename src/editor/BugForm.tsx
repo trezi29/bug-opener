@@ -28,7 +28,7 @@ interface BugFormProps {
 type Integration = "linear" | "clickup";
 
 export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
-  const [title, setTitle] = useState(`BUG | ${metadata.pageTitle || metadata.url}`);
+  const [title, setTitle] = useState(`BUG | `);
   const [description, setDescription] = useState("");
   const [integration, setIntegration] = useState<Integration>("linear");
   const [submitting, setSubmitting] = useState(false);
