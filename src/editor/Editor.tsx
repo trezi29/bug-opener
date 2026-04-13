@@ -209,7 +209,7 @@ export function Editor() {
       </div>
 
       {/* Right: Form + Metadata */}
-      <div className="w-[400px] border-l border-gray-200 bg-white overflow-y-auto flex flex-col">
+      <div className="w-[400px] border-l border-gray-200 bg-white overflow-y-auto flex flex-col" onMouseDown={() => setSelectedId(null)}>
         <BugForm
           metadata={metadata}
           onExportCanvas={handleExportCanvas}
