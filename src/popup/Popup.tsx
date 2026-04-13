@@ -55,7 +55,7 @@ export function Popup() {
   };
 
   const openOptions = () => {
-    chrome.runtime.openOptionsPage();
+    chrome.tabs.create({ url: chrome.runtime.getURL("src/options/index.html") });
   };
 
   const configured = hasLinear || hasClickUp;
