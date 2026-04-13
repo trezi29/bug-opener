@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -65,6 +65,19 @@ export function Toolbar({
   selectedId,
   onDelete,
 }: ToolbarProps) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && canUndo) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+        e.preventDefault();
+        onUndo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [canUndo, onUndo]);
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">

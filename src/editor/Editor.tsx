@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useReducer, useState } from "react";
 import { AnnotationCanvas, type AnnotationCanvasHandle } from "./AnnotationCanvas";
 import { Toolbar } from "./Toolbar";
 import { BugForm } from "./BugForm";
@@ -7,6 +7,30 @@ import { getSessionData, type PageMetadata } from "@/utils/storage";
 import type { ToolType, DrawOperation } from "@/utils/canvas-tools";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+
+// --- Undo history reducer ---
+type HistoryState = { past: DrawOperation[][]; present: DrawOperation[] };
+type HistoryAction =
+  | { type: 'ADD'; op: DrawOperation }
+  | { type: 'DELETE'; id: string }
+  | { type: 'UPDATE'; id: string; op: DrawOperation }
+  | { type: 'UNDO' };
+
+function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
+  switch (action.type) {
+    case 'ADD':
+      return { past: [...state.past, state.present], present: [...state.present, action.op] };
+    case 'DELETE':
+      return { past: [...state.past, state.present], present: state.present.filter((o) => o.id !== action.id) };
+    case 'UPDATE':
+      return { past: [...state.past, state.present], present: state.present.map((o) => (o.id === action.id ? action.op : o)) };
+    case 'UNDO':
+      if (state.past.length === 0) return state;
+      return { past: state.past.slice(0, -1), present: state.past[state.past.length - 1] };
+    default:
+      return state;
+  }
+}
 
 export function Editor() {
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
@@ -18,7 +42,8 @@ export function Editor() {
   const [activeTool, setActiveTool] = useState<ToolType>("move");
   const [color, setColor] = useState("#ff0000");
   const [strokeWidth, setStrokeWidth] = useState(3);
-  const [operations, setOperations] = useState<DrawOperation[]>([]);
+  const [history, dispatch] = useReducer(historyReducer, { past: [], present: [] });
+  const operations = history.present;
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Submission state
@@ -53,17 +78,18 @@ export function Editor() {
   }, []);
 
   const handleUndo = () => {
-    setOperations((prev) => prev.slice(0, -1));
+    dispatch({ type: 'UNDO' });
+    setSelectedId(null);
   };
 
   const handleAddOperation = (op: DrawOperation) => {
-    setOperations((prev) => [...prev, op]);
+    dispatch({ type: 'ADD', op });
     setActiveTool('move');
     setSelectedId(op.id);
   };
 
   const handleUpdateOperation = (id: string, op: DrawOperation) => {
-    setOperations((prev) => prev.map((o) => (o.id === id ? op : o)));
+    dispatch({ type: 'UPDATE', id, op });
   };
 
   // Sync color and stroke width to selected shape
@@ -94,7 +120,7 @@ export function Editor() {
   };
 
   const handleDeleteOperation = useCallback((id: string) => {
-    setOperations((prev) => prev.filter((op) => op.id !== id));
+    dispatch({ type: 'DELETE', id });
     setSelectedId(null);
   }, []);
 
@@ -187,7 +213,7 @@ export function Editor() {
           strokeWidth={strokeWidth}
           onStrokeWidthChange={handleStrokeWidthChange}
           onUndo={handleUndo}
-          canUndo={operations.length > 0}
+          canUndo={history.past.length > 0}
           selectedId={selectedId}
           onDelete={() => selectedId && handleDeleteOperation(selectedId)}
         />
