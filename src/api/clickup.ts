@@ -86,7 +86,6 @@ export async function createClickUpTask(
     body: JSON.stringify({
       name: input.name,
       markdown_description: input.description,
-      tags: ["bug"],
     }),
   });
 
