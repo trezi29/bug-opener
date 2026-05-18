@@ -216,6 +216,7 @@ export function Editor() {
           canUndo={history.past.length > 0}
           selectedId={selectedId}
           onDelete={() => selectedId && handleDeleteOperation(selectedId)}
+          onSettingsClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') })}
         />
         <div className="flex-1 overflow-auto p-4">
           <AnnotationCanvas

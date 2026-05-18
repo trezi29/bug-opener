@@ -231,7 +231,7 @@ export function BugForm({ metadata, onExportCanvas, onSuccess }: BugFormProps) {
             No API key configured for {integration}. Go to{" "}
             <button
               className="underline"
-              onClick={() => chrome.runtime.openOptionsPage()}
+              onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') })}
             >
               Settings
             </button>{" "}

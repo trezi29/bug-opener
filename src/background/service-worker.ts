@@ -127,6 +127,10 @@ async function handleSubmitBug(payload: SubmitPayload) {
   throw new Error(`Unknown integration: ${integration}`);
 }
 
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) handleCaptureBug(tab.id);
+});
+
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const response = await fetch(dataUrl);
   return response.blob();

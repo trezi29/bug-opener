@@ -16,6 +16,7 @@ import {
   Undo2,
   MousePointer,
   Trash2,
+  Settings,
 } from 'lucide-react';
 import type { ToolType } from '@/utils/canvas-tools';
 import { cn } from '@/utils/cn';
@@ -31,6 +32,7 @@ interface ToolbarProps {
   canUndo: boolean;
   selectedId: string | null;
   onDelete: () => void;
+  onSettingsClick: () => void;
 }
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
@@ -64,6 +66,7 @@ export function Toolbar({
   canUndo,
   selectedId,
   onDelete,
+  onSettingsClick,
 }: ToolbarProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -175,6 +178,18 @@ export function Toolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Delete selected</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-6 bg-gray-200 ml-auto" />
+
+        {/* Settings */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onSettingsClick}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Settings</TooltipContent>
         </Tooltip>
       </div>
     </TooltipProvider>
