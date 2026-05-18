@@ -46,6 +46,9 @@ export function Editor() {
   const operations = history.present;
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Sidebar visibility
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   // Submission state
   const [submitResult, setSubmitResult] = useState<{
     url: string;
@@ -204,7 +207,7 @@ export function Editor() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left: Canvas area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 min-w-0 relative">
         <Toolbar
           activeTool={activeTool}
           onToolChange={setActiveTool}
@@ -218,7 +221,7 @@ export function Editor() {
           onDelete={() => selectedId && handleDeleteOperation(selectedId)}
           onSettingsClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') })}
         />
-        <div className="flex-1 overflow-auto p-4">
+        <div className="absolute inset-0 overflow-auto p-4 flex items-center justify-center">
           <AnnotationCanvas
             ref={canvasRef}
             screenshotUrl={screenshotUrl}
@@ -236,14 +239,29 @@ export function Editor() {
       </div>
 
       {/* Right: Form + Metadata */}
-      <div className="w-[400px] border-l border-gray-200 bg-white overflow-y-auto flex flex-col" onMouseDown={() => setSelectedId(null)}>
-        <BugForm
-          metadata={metadata}
-          onExportCanvas={handleExportCanvas}
-          onSuccess={setSubmitResult}
-        />
-        <MetadataPanel metadata={metadata} />
-      </div>
+      {sidebarOpen ? (
+        <div className="w-[400px] border-l border-gray-200 bg-white overflow-y-auto flex flex-col" onMouseDown={() => setSelectedId(null)}>
+          <div className="flex justify-end p-2 border-b border-gray-100">
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} title="Close panel">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </Button>
+          </div>
+          <BugForm
+            metadata={metadata}
+            onExportCanvas={handleExportCanvas}
+            onSuccess={setSubmitResult}
+          />
+          <MetadataPanel metadata={metadata} />
+        </div>
+      ) : (
+        <button
+          className="w-8 border-l border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center transition-colors"
+          onClick={() => setSidebarOpen(true)}
+          title="Open panel"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      )}
     </div>
   );
 }

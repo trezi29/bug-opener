@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Slider } from '@/components/ui/slider';
 import {
   ArrowUpRight,
   Square,
@@ -15,8 +13,8 @@ import {
   Type,
   Undo2,
   MousePointer,
-  Trash2,
   Settings,
+  Minus,
 } from 'lucide-react';
 import type { ToolType } from '@/utils/canvas-tools';
 import { cn } from '@/utils/cn';
@@ -36,7 +34,7 @@ interface ToolbarProps {
 }
 
 const tools: { type: ToolType; icon: React.ElementType; label: string }[] = [
-  { type: 'move', icon: MousePointer, label: 'Move' },
+  { type: 'move', icon: MousePointer, label: 'Select' },
   { type: 'rect', icon: Square, label: 'Rectangle' },
   { type: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
   { type: 'circle', icon: Circle, label: 'Circle' },
@@ -65,7 +63,7 @@ export function Toolbar({
   onUndo,
   canUndo,
   selectedId,
-  onDelete,
+  onDelete: _onDelete,
   onSettingsClick,
 }: ToolbarProps) {
   useEffect(() => {
@@ -81,116 +79,98 @@ export function Toolbar({
     return () => window.removeEventListener('keydown', handler);
   }, [canUndo, onUndo]);
 
+  const showColorRow = activeTool !== 'move' || selectedId !== null;
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">
-        {/* Tool buttons */}
-        <div className="flex items-center gap-1">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
+        {/* Main tool pill */}
+        <div className="flex items-center gap-0.5 bg-[#1C1C1E] rounded-full px-2 py-1.5 shadow-2xl pointer-events-auto">
           {tools.map(({ type, icon: Icon, label }) => (
             <Tooltip key={type}>
               <TooltipTrigger asChild>
-                <Button
-                  variant={activeTool === type ? 'default' : 'ghost'}
-                  size="icon"
+                <button
+                  className={cn(
+                    'w-8 h-8 flex items-center justify-center rounded-full transition-colors',
+                    activeTool === type
+                      ? 'bg-white text-[#1C1C1E]'
+                      : 'text-white/80 hover:bg-white/10',
+                  )}
                   onClick={() => onToolChange(type)}
                 >
                   <Icon className="h-4 w-4" />
-                </Button>
+                </button>
               </TooltipTrigger>
-              <TooltipContent>{label}</TooltipContent>
+              <TooltipContent side="bottom">{label}</TooltipContent>
             </Tooltip>
           ))}
+
+          <div className="w-px h-5 bg-white/20 mx-1" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  'w-8 h-8 flex items-center justify-center rounded-full transition-colors',
+                  canUndo
+                    ? 'text-white/80 hover:bg-white/10'
+                    : 'text-white/25 cursor-not-allowed',
+                )}
+                onClick={canUndo ? onUndo : undefined}
+                disabled={!canUndo}
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Undo</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-full text-white/80 hover:bg-white/10 transition-colors"
+                onClick={onSettingsClick}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Settings</TooltipContent>
+          </Tooltip>
         </div>
 
-        <div className="w-px h-6 bg-gray-200" />
+        {/* Color + stroke pill — shown when a drawing tool is active or a shape is selected */}
+        {showColorRow && (
+          <div className="flex items-center gap-1.5 bg-[#1C1C1E] rounded-full px-3 py-2 shadow-2xl pointer-events-auto">
+            {colors.map((c) => (
+              <button
+                key={c}
+                className={cn(
+                  'w-5 h-5 rounded-full transition-all flex-shrink-0',
+                  color === c
+                    ? 'ring-2 ring-white ring-offset-1 ring-offset-[#1C1C1E] scale-110'
+                    : 'hover:scale-110',
+                  c === '#ffffff' && 'border border-white/30',
+                )}
+                style={{ backgroundColor: c }}
+                onClick={() => onColorChange(c)}
+              />
+            ))}
 
-        {/* Color picker */}
-        <div className="flex items-center gap-1">
-          {colors.map((c) => (
-            <button
-              key={c}
-              className={cn(
-                'w-6 h-6 rounded-full border-2 transition-transform',
-                color === c
-                  ? 'border-gray-900 scale-110'
-                  : 'border-gray-300 hover:scale-105',
-              )}
-              style={{ backgroundColor: c }}
-              onClick={() => onColorChange(c)}
+            <div className="w-px h-5 bg-white/20 mx-0.5" />
+
+            <Minus className="h-3 w-3 text-white/50 flex-shrink-0" />
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={strokeWidth}
+              onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-20 accent-white"
             />
-          ))}
-        </div>
-
-        <div className="w-px h-6 bg-gray-200" />
-
-        {/* Stroke width */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Width</span>
-          <Slider
-            value={[strokeWidth]}
-            onValueChange={(value) => onStrokeWidthChange(value[0])}
-            min={1}
-            max={10}
-            step={1}
-            className="w-20"
-          />
-          {/* <input
-            type="range"
-            min={1}
-            max={10}
-            value={strokeWidth}
-            onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="w-20"
-          />*/}
-          <span className="text-xs text-gray-600 w-4">{strokeWidth}</span>
-        </div>
-
-        <div className="w-px h-6 bg-gray-200" />
-
-        {/* Undo */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onUndo}
-              disabled={!canUndo}
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo</TooltipContent>
-        </Tooltip>
-
-        <div className="w-px h-6 bg-gray-200" />
-
-        {/* Delete selected */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              disabled={!selectedId}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Delete selected</TooltipContent>
-        </Tooltip>
-
-        <div className="w-px h-6 bg-gray-200 ml-auto" />
-
-        {/* Settings */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={onSettingsClick}>
-              <Settings className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Settings</TooltipContent>
-        </Tooltip>
+            <span className="text-xs text-white/80 w-3 text-center tabular-nums">{strokeWidth}</span>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );
